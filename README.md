@@ -3,8 +3,10 @@ To knit the project in a pdf file install tinytex packages in R, following the c
 
 
 
-```install.packages('tinytex')
-tinytex:::install_prebuilt()```
+``` 
+install.packages('tinytex')
+tinytex:::install_prebuilt()
+```
 
 
 
@@ -12,8 +14,10 @@ And then test it:
 
 
 
-```writeLines(c(
+```
+writeLines(c(
   '\\documentclass{article}',
   '\\begin{document}', 'Hello world!', '\\end{document}'
 ), 'test.tex')
-tinytex::pdflatex('test.tex')```
+tinytex::pdflatex('test.tex')
+```
