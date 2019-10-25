@@ -1,0 +1,161 @@
+---
+title: |
+  | **Bayesian Analysis on effectiveness of Progabide in treating Epilepsy Seizure**
+subtitle: "Statistics For Data Science II Project"
+author: "Roberta Parisi - roberta.parisi2@gmail.com - 1548814"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+# Abstract
+
+The aim of this work is to carry out a fully Bayesian Analysis and study the effect of a drug, progabide, in some epilectic patient. Specifically ...... 
+
+
+#1. Dataset
+
+The dateset that I am going to use for this project was firstly used by Thall and Vail (1990), and it's relative to a clinical trial with 59 patients suffering from epilepsy. Some of this patient, randomly chosed, are receiving an anti-epilectic drug (progabide), some other are just receiving a placebo in addition to standard chemotherapy. Specifically, 31 patient of the 59 total received the progabide treatment, the other 28 the placebo. The data has longitudinal measurement: 
+
+- A *baseline seizure count* for the 8 weeks prior to being randomized to treatment;
+- Four measurement for the next 8 weeks, each of which is done every two weeks and that represent the *count of seizure* in that period (referred to as $CS$).
+
+
+Considering these informations, I always used as actual baseline the value itself divided by 4 (and I will refer to it by calling it $BS_4$), in order to be able to compare it with one of the other 4 measurement: the same comparison will be meaningless if we are referring to a count related to two periods with different lengths.
+
+Let's see specifically all the variable present have in the dataset:
+
+- Treatment group of the patiente (0 if placebo or 1 if progabide);
+
+- Baseline seizures counts, before the trial starts; 
+
+- The visit period (First two weeks, Second two weeks, Third two week or four two weeks); 
+
+- The age of the patient;
+
+- The seizure count for each patient and periods.
+
+
+### Descriptive Analysis 
+
+
+
+The median seizure count befor to start the trial (divided by 4, in order to have it as average on a 2 weeks period) was 5.5 and the average was of almost 8 (7.8), that became 4.75 and 7.69 for the patients group that are receiving the placebo and a median of 6 and an average of 7.903 for the ones receiving the drug. Below we can see the baseline seizure count respectively for the entire group, for the placebo group and for the progabide group:
+
+
+
+```{r baseline_summary, echo = FALSE, message=FALSE, warning=FALSE}
+library("robustbase")
+epilepsy = robustbase::epilepsy
+
+#print("Baseline seizure count for all the patients")
+summary(epilepsy$Base4)
+
+#print("Baseline seizure count for the Placebo Group patients")
+summary(epilepsy[epilepsy$Trt== "placebo",]$Base4)
+
+#print("Baseline seizure count for the Progabide Group patients")
+summary(epilepsy[epilepsy$Trt!= "placebo",]$Base4)
+
+```
+
+
+Let's now see the seizure trend in the 4 visit period compared to the baseline $\frac{SC_t}{BS_4}$: the Fig. \ref{fig:treatment_plot} seems pretty effective the use of progabide.We can notice that the ratio though the 4 period has a decreasing trend for the group of people taking the drugs, unlike to the placebo group that, although their ratio distribution has a lot of fluctuation, is not decreasing. A big difference that is possible to notice is the median value of the ratio distribution: for the placebo group is always bigger than 1, and so the number of seizure tends to grow with respect to the baseline. Here we can see also the main statistics relative to each visit period and with respect to the placebo group and the progabide group, respectively:
+
+```{r dataset_robustbase,echo=FALSE, results=TRUE, warning=FALSE,message=FALSE}
+library(reshape2)
+library(ggplot2)
+library("robustbase")
+epilepsy = robustbase::epilepsy
+epil_melt = melt(epilepsy, measure.vars = 2:5)
+
+levels(epil_melt$variable) <- c("Period 1","Period 2","Period 3", "Period 4")
+
+base4 = (epilepsy$Base/4)
+```
+
+* Visit period 1:
+
+```{r distoV1Placebo, echo=FALSE}
+summary(epilepsy$Y1[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
+
+
+summary(epilepsy$Y1[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
+```
+
+* Visit period 2:
+
+```{r distoV2Placebo, echo=FALSE}
+summary(epilepsy$Y2[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
+
+summary(epilepsy$Y2[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
+```
+
+* Visit period 3:
+
+```{r distoV3Placebo, echo=FALSE}
+summary(epilepsy$Y3[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
+
+summary(epilepsy$Y3[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
+```
+
+* Visit period 4:
+
+
+```{r distoV4Placebo, echo=FALSE}
+summary(epilepsy$Y4[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
+
+summary(epilepsy$Y4[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
+```
+
+
+
+```{r treatment_plot, fig.align='center', fig.height= 4,results= TRUE,echo = FALSE, message=FALSE, warning=FALSE, fig.cap='Rate of current seizure count over the baseline seizure count. The baseline is considerd divided by 4 since it\'s referring to an 8 weeks period.'}
+treatment_plot <- ggplot(epil_melt, aes(y = value/base4, x= factor(Trt), fill = factor(variable) )) +
+  geom_boxplot(alpha = 0.48)+
+  facet_grid(.~variable) +
+  guides(fill=FALSE)+
+  #geom_boxplot(fill = fill, colour = line, alpha = 0.7) +
+  #geom_jitter(position = position_jitter(0.5), aes(colour=factor(variable)))
+  geom_jitter(position=position_jitter(width=0.3, height=0.2), aes(colour=factor(variable)), alpha=0.85, show.legend = FALSE)+
+  labs(x="Treatment", y = "Current/Baseline Seizure ratio")+
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, vjust = 0.5,size = 18))
+treatment_plot
+```
+
+```{r visit summary, echo = FALSE, message=FALSE, warning=FALSE}
+
+```
+
+
+It's important to point out that there are differences in the seizure counts within patients but also between patients over time. 
+Specifically, one  of the patient seems to have an extreme number of seizure counts at all time points compared to the other one, while another patient registered a really high number of seizures at the third visit with respect to his/her own standards. 
+
+
+# 2. Model
+
+
+
+
+
+The main question of interest is whether taking this anti-convulsant drug reduced the number of epileptic seizures compared with placebo. Along to the descriptive statistics,......................? 
+
+
+## 2.1 Overdispersion
+In general, count data could be fitted really well by a poisson distribution but let's take a look to the density of the number of seizure at each visit in Fig. \ref{fig:density_period} and .... overdispersions 
+
+
+```{r density_period, echo=FALSE, fig.align='center', results= TRUE, message=FALSE, warning=FALSE, fig.cap='Density of the number of seizure for each period', fig.height=4}
+
+
+hist<- ggplot(epil_melt, aes(x = value, fill = factor(variable)))+
+  geom_density(alpha = 0.7, show.legend = FALSE) +
+  facet_grid(.~variable) 
+#  geom_histogram(aes(y = ..density..),binwidth = 0.5, alpha = 0.6 )
+  
+  
+hist
+
+
+```
+Let's take some test
