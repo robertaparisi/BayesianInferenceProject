@@ -174,7 +174,7 @@ The main question of interest is whether taking this anti-convulsant drug can re
 
 ## 2.1 Model 0: Basic Poisson
 
-Let's try to fit a simple poisson model considering the index *j* for the the observation level (1, ..., 59), the index *k* for the visit period ( from 1 to 4) and few transformations applied to the variables: to \{Baseline Seizure Count (BS_4)} and \it{age} I have applied the natural logarithm, as used in other studies (i.e. Breslow and Clayton, 1993 and also Thall and Vail, 1990).
+Let's try to fit a simple poisson model considering the index *j* for the the observation level (1, ..., 59), the index *k* for the visit period ( from 1 to 4) and few transformations applied to the variables: to *Baseline Seizure Count (BS_4)* and *age* I have applied the natural logarithm, as used in other studies (i.e. Breslow and Clayton, 1993 and also Thall and Vail, 1990).
 
 
 \[Y_{j,k} \sim Pois( \mu_{j,k}) \]
@@ -223,6 +223,8 @@ writeLines(poissonModelString , "basicPoisson.txt")
 ```{r poisson_model, message=FALSE, warning=FALSE}
 library(rjags)
 library(R2jags)
+
+set.seed(200908)
 parametersPoisson = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0")
   
 basicPoissonJags = jags(model.file = "basicPoisson.txt",
@@ -231,9 +233,8 @@ basicPoissonJags = jags(model.file = "basicPoisson.txt",
 
 basicPoissonJags
 
-set.seed(200908)
 burn = 3000
-iter = 35000
+iter = 20000
 
 update(basicPoissonJags$model, burn)
 
@@ -275,7 +276,6 @@ dicBasicPoisson = dic.samples(basicPoissonJags$model,
                               thin = 10)
 dicBasicPoisson
 
-#> dicBasicPoissonMean deviance:  3347 penalty 5.847 Penalized deviance: 3353 
 
 
 ```
@@ -471,7 +471,7 @@ negBinomialJags= jags(model.file = "NBmodel.txt",
                       n.chains= 3,
                       n.thin = 10,
                       n.burnin = 8000,
-                      n.iter = 35000)
+                      n.iter = 30000)
 
 negBinomialJags
 
@@ -497,12 +497,12 @@ The negative Binomial model needs an higher burn-in value to reach the convergen
 
 negBinomialSim= coda.samples(model = negBinomialJags$model, 
                              variable.names = parametersNB, 
-                             n.iter = iter, 
+                             n.iter = 30000, 
                              thin = 50)
 
 summary(negBinomialSim)
 
-dicNegBin = dic.samples(negBinomialJags, n.iter = iter, thin = 50)
+dicNegBin = dic.samples(negBinomialJags$model, n.iter = iter, thin = 50)
 
 dicNegBin
 
@@ -512,7 +512,7 @@ dicNegBin
 -------------------
 
 
-## 2.3 Negative Binomial with random effects
+## 2.3 Negative Binomial with Random Effects
 
 Let's introduce the Random Effects parameter and define this new model:
 
@@ -531,10 +531,16 @@ where b_1 represent the random effects related to the individual patient:
 
 \[b_{1,j} \sim Norm (0, tau.b_1)\]
 
+with 
+
 whilst b represent the combined random effects related to the patient and the single visit period:
+
+
 
 Prior:
 \[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+
+
 ### BUGS MODEL
 ```{r negative_binomial_RE_model}
 
@@ -589,9 +595,9 @@ writeLines(NegativeBinomialModelString, "NBREmodel.txt")
 ```
 
 ### JAGS MODEL
-```{r jagsModelNegBinomial1}
+```{r jagsModelNegBinomialRE}
   
-parametersNBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "tau.b", "tau.b")
+parametersNBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1")
 
 negBinomialREJags= jags(model.file = "NBREmodel.txt", 
                       parameters.to.save =  parametersNBre, 
@@ -618,7 +624,7 @@ autocorr.diag(as.mcmc(negBinomialREJags))
 
 ```
 ### SIMULATION AND DIC COMPUTATION
-```{r negativeBinomialSimulation}
+```{r negativeBinomialRESimulation}
 
 negBinomialRESim= coda.samples(model = negBinomialREJags$model, 
                              variable.names = parametersNBre, 
@@ -627,7 +633,7 @@ negBinomialRESim= coda.samples(model = negBinomialREJags$model,
 
 summary(negBinomialRESim)
 
-dicNegBinRE = dic.samples(negBinomialREJags, n.iter = iter, thin = 50)
+dicNegBinRE = dic.samples(negBinomialREJags$model, n.iter = iter, thin = 50)
 
 dicNegBinRE
 
@@ -637,33 +643,365 @@ dicNegBinRE
 ## 2.4 Poisson with random effects
 
 ### BUGS MODEL
+```{r poissonRE_bugs_model}
+
+poissonREModelString = "model
+{
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+  log(mu[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar)
+  + b1[j] + b[j, k]
+  y[j, k] ~ dpois(mu[j, k])
+  b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
+  }
+  b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,1.0E-4)
+  beta.Trt ~ dnorm(0.0,1.0E-4);
+  beta.BT ~ dnorm(0.0,1.0E-4)
+  beta.Age ~ dnorm(0.0,1.0E-4)
+  beta.V4 ~ dnorm(0.0,1.0E-4)
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  # re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+}"
+writeLines(poissonREModelString, "poissonREmodel.txt")
+```
+
+### JAGS MODEL
+```{r poissonREjags}
+
+parameterPOISre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1")
+
+poissonREJags = jags("poissonREmodel.txt",
+                      parameters.to.save =  parametersPOISre,
+                      data = data_jags, 
+                      n.chains=2,
+                      n.thin = 10 , 
+                      n.burnin = 5000,
+                      n.iter = 25000)
+
+poissonREJags
+
+
+update(poissonREJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(poissonREJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(poissonREJags))
+# i am going to add a thining factor of 10
+
+
+```
+### SIMULATION AND DIC COMPUTATION
+```{r poissonRESimulation}
+
+poissonRESim= coda.samples(model = poissonREJags$model, 
+                             variable.names = parametersPOISre, 
+                             n.iter = iter, 
+                             thin = 10)
+
+summary(poissonRESim)
+
+dicPoisRE = dic.samples(poissonREJags$model, n.iter = iter, thin = 10)
+
+dicPoisRE
+
+```
+
+## 2.5 Zero-Inflated Negative Binomial
+```{r zeroInflatedNegativeBinomialBUGSmodel}
+
+ZINBmodelString = "model{
+ # likelihood
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+
+
+  log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar) 
+  + b1[j] + b[j, k]+ z[j,k]
+  
+  b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
+  p[j,k] <- r/(r+lambda[j,k])
+  y[j, k] ~ dnegbin( p[j,k], r)
+  psi ~ dunif(0, 1) 
+  z[j,k] ~ dbern(psi[j,k]) 
+  }
+  
+  b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  r ~ dunif(0.0001,1000)
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,1.0E-4)
+  beta.Trt ~ dnorm(0.0,1.0E-4);
+  beta.BT ~ dnorm(0.0,1.0E-4)
+  beta.Age ~ dnorm(0.0,1.0E-4)
+  beta.V4 ~ dnorm(0.0,1.0E-4)
+  
+
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  
+# re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+
+}"
+writeLines(ZIPmodelString, "ZIPmodel.txt")
+```
 
 ### JAGS MODEL
 
+```{r ZINBjagsmodel}
+parameterZINBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1" ,"psi")
+
+ZINBreJags = jags("ZINBmodel.txt",
+                 parameters.to.save =  parametersZINBre,
+                 data = data_jags, 
+                 n.chains=3,
+                 n.thin = 10 , 
+                 n.burnin = 8000,
+                 n.iter = 35000)
+
+ZINBreJags
+
+burn = 10000
+update(ZINBreJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(ZINBreJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(ZINBreJags))
+# i am going to add a thining factor of 10
+
+
+```
+
+
 ### SIMULATION AND DIC COMPUTATION
 
-## 2.5 Zero-Inflated Negativ Binomial
 
-### BUGS MODEL
+```{r ZINBreSimulation}
 
-### JAGS MODEL
+ZINBreSim= coda.samples(model = ZINBreJags$model, 
+                             variable.names = parametersZINBre, 
+                             n.iter = iter, 
+                             thin = 10)
 
-### SIMULATION AND DIC COMPUTATION
+summary(ZINBreSim)
+
+dicZinbRE = dic.samples(ZINBreJags$model, n.iter = iter, thin = 10)
+
+dicZinbRE
+
+```
+
 
 ## 2.6 Zero-Inflated Poisson
 
-
 ### BUGS MODEL
+```{r zeroInflatedBUGSmodel}
+
+ZIPmodelString = "model{
+ for(j in 1 : N) {
+ for(k in 1 : T) {
+ mu[j,k] <- lambda[j,k]
+  log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar)
+  + b1[j] + b[j, k]+ z[j, k]
+  y[j, k] ~ dpois(mu[j, k])
+  b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
+  psi ~ dunif(0, 1) 
+  z[j,k] ~ dbern(psi[j,k]) 
+  }
+  b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,0.01)
+  beta.Trt ~ dnorm(0.0,1.0E-2);
+  beta.BT ~ dnorm(0.0,1.0E-2)
+  beta.Age ~ dnorm(0.0,1.0E-2)
+  beta.V4 ~ dnorm(0.0,1.0E-2)
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+
+  # re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+}"
+writeLines(ZIPmodelString, "ZIPmodel.txt")
+```
 
 ### JAGS MODEL
 
+```{r ZIPjagsmodel}
+parameterZIPre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1","psi")
+
+ZIPreJags = jags("ZIPmodel.txt",
+                 parameters.to.save =  parametersZIPre,
+                 data = data_jags, 
+                 n.chains=3,
+                 n.thin = 10 , 
+                 n.burnin = 5000,
+                 n.iter = 25000)
+
+ZIPreJags
+
+burn = 10000
+update(ZIPreJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(ZIPreJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(ZIPreJags))
+# i am going to add a thining factor of 10
+
+
+```
+
+
 ### SIMULATION AND DIC COMPUTATION
+
+
+```{r ZIPreSimulation}
+
+ZIPreSim= coda.samples(model = ZIPreJags$model, 
+                             variable.names = parametersZIPre, 
+                             n.iter = iter, 
+                             thin = 10)
+
+summary(ZIPreSim)
+
+dicZipRE = dic.samples(ZIPreJags$model, n.iter = iter, thin = 10)
+
+dicZipRE
+
+```
+
 
 
 ## 3. MCMC Diagnostic
 
+```{r NBmcmcdiag, warning=FALSE, message=FALSE}
+library(mcmcplots)
+mcmcplot1(negBinomialSim[,"beta.Age",drop=FALSE])
+mcmcplot1(negBinomialSim[,"beta.BT",drop=FALSE])
+mcmcplot1(negBinomialSim[,"beta.Base",drop=FALSE])
+mcmcplot1(negBinomialSim[,"beta.Trt",drop=FALSE])
+mcmcplot1(negBinomialSim[,"beta.V4",drop=FALSE])
+mcmcplot1(negBinomialSim[,"a0",drop=FALSE])
+
+
+```
+
+
+```{r NBREmcmcdiag}
+
+mcmcplot1(negBinomialRESim[,"beta.Age",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"beta.BT",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"beta.Base",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"beta.Trt",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"beta.V4",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"a0",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"sigma.b",drop=FALSE])
+mcmcplot1(negBinomialRESim[,"sigma.b1",drop=FALSE])
+```
+
+```{r poisREmcmcdiag}
+
+mcmcplot1(poissonRESim[,"beta.Age",drop=FALSE])
+mcmcplot1(poissonRESim[,"beta.BT",drop=FALSE])
+mcmcplot1(poissonRESim[,"beta.Base",drop=FALSE])
+mcmcplot1(poissonRESim[,"beta.Trt",drop=FALSE])
+mcmcplot1(poissonRESim[,"beta.V4",drop=FALSE])
+mcmcplot1(poissonRESim[,"a0",drop=FALSE])
+mcmcplot1(poissonRESim[,"sigma.b",drop=FALSE])
+mcmcplot1(poissonRESim[,"sigma.b1",drop=FALSE])
+```
+
+```{r ZinbREmcmcdiag}
+
+mcmcplot1(ZINBreSim[,"beta.Age",drop=FALSE])
+mcmcplot1(ZINBreSim[,"beta.BT",drop=FALSE])
+mcmcplot1(ZINBreSim[,"beta.Base",drop=FALSE])
+mcmcplot1(ZINBreSim[,"beta.Trt",drop=FALSE])
+mcmcplot1(ZINBreSim[,"beta.V4",drop=FALSE])
+mcmcplot1(ZINBreSim[,"a0",drop=FALSE])
+mcmcplot1(ZINBreSim[,"sigma.b",drop=FALSE])
+mcmcplot1(ZINBreSim[,"sigma.b1",drop=FALSE])
+mcmcplot1(ZINBreSim[,"psi",drop=FALSE])
+```
+
+```{r ZipREmcmcdiag}
+
+mcmcplot1(ZIPreSim[,"beta.Age",drop=FALSE])
+mcmcplot1(ZIPreSim[,"beta.BT",drop=FALSE])
+mcmcplot1(ZIPreSim[,"beta.Base",drop=FALSE])
+mcmcplot1(ZIPreSim[,"beta.Trt",drop=FALSE])
+mcmcplot1(ZIPreSim[,"beta.V4",drop=FALSE])
+mcmcplot1(ZIPreSim[,"a0",drop=FALSE])
+mcmcplot1(ZIPreSim[,"sigma.b",drop=FALSE])
+mcmcplot1(ZIPreSim[,"sigma.b1",drop=FALSE])
+mcmcplot1(ZIPreSim[,"psi",drop=FALSE])
+```
 
 ## 4. Model Comparison
+
+
 
 3.3 Bur
 
@@ -679,4 +1017,4 @@ A combination of normal and independent Gamma random effects. This
 is the most commonly used form of the combined model in which the
 normal random effects induce/account for correlation while the Gamma
 random effects induce/account for overdispersion. It is model (3.16) but
-with ??i diagonal.
+with Σi diagonal.
