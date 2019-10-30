@@ -14,33 +14,37 @@ The aim of this work is to carry out a fully Bayesian Analysis and study the eff
 
 
 #1. Dataset
+1. Dataset
 
-The dateset that I am going to use for this project was firstly used by Thall and Vail (1990), and it's relative to a clinical trial with 59 patients suffering from epilepsy. Some of this patient, randomly chosed, are receiving an anti-epilectic drug (progabide), some other are just receiving a placebo in addition to standard chemotherapy. Specifically, 31 patient of the 59 total received the progabide treatment, the other 28 the placebo. The data has longitudinal measurement: 
+The dateset contains clinical trials conducted on 59 patients suffering from epilepsy. A total of 31 randomly chosen patients received an anti-epileptic drug (progabide) while the remaining 28 received a placebo in addition to standard chemotherapy. 
+The data have 5 longitudinal measurements: 
 
-- A *baseline seizure count* for the 8 weeks prior to being randomized to treatment;
-- Four measurement for the next 8 weeks, each of which is done every two weeks and that represent the *count of seizure* in that period (referred to as $CS$).
+- A *baseline seizure count* of the 8 weeks prior to being randomized to treatment; 
+- Four measurement for the next 8 weeks, where each of them is repeated every two weeks and represents the *count of seizure* in that period (referred to as $CS$).
 
 
-Considering these informations, I always used as actual baseline the value itself divided by 4 (and I will refer to it by calling it $BS_4$), in order to be able to compare it with one of the other 4 measurement: the same comparison will be meaningless if we are referring to a count related to two periods with different lengths.
+The period length of the variable *baseline* differs from the other variables (8 weeks vs 2 weeks). To make the comparison possible I decided to divide the count values of the baseline by 4, so that I have an average for a period length of 2 weeks (I will refer to this new variable as $BS_4$).
 
-Let's see specifically all the variable present have in the dataset:
+Let's observe more in details the variables in the dataset:
 
-- Treatment group of the patiente (0 if placebo or 1 if progabide);
+- Treatment group of the patiente (0 if placebo / 1 if progabide, called *Trt*);
 
-- Baseline seizures counts, before the trial starts; 
+- Baseline seizures counts, the seizure count before the trial starts (*base*); 
 
-- The visit period (First two weeks, Second two weeks, Third two week or four two weeks); 
+- The visit period  (First two weeks, Second two weeks, Third two week or Fourth two weeks) ; 
 
-- The age of the patient;
+- The age of the patient (*Age*);
 
-- The seizure count for each patient and periods.
+- The seizure count for each patient and periods (*y*);
+
+- A dummy variable which flag with the value 1 the 4th visit of every patient and with 0 the others (*V4*).
 
 
 ### Descriptive Analysis 
 
 
 
-The median seizure count befor to start the trial (divided by 4, in order to have it as average on a 2 weeks period) was 5.5 and the average was of almost 8 (7.8), that became 4.75 and 7.69 for the patients group that are receiving the placebo and a median of 6 and an average of 7.903 for the ones receiving the drug. Below we can see the baseline seizure count respectively for the entire group, for the placebo group and for the progabide group:
+The median seizure count before to start the trial ($BS_4$) was 5.5 and the average was of almost 8 (7.8), that became respectively 4.75 and 7.69 for the patients group that are receiving the placebo and 6 and 7.903 for the ones under treatment. Below we can see the baseline seizure count respectively for the entire group, for the placebo group and for the progabide group:
 
 
 
@@ -60,7 +64,8 @@ summary(epilepsy[epilepsy$Trt!= "placebo",]$Base4)
 ```
 
 
-Let's now see the seizure trend in the 4 visit period compared to the baseline $\frac{SC_t}{BS_4}$: the Fig. \ref{fig:treatment_plot} seems pretty effective the use of progabide.We can notice that the ratio though the 4 period has a decreasing trend for the group of people taking the drugs, unlike to the placebo group that, although their ratio distribution has a lot of fluctuation, is not decreasing. A big difference that is possible to notice is the median value of the ratio distribution: for the placebo group is always bigger than 1, and so the number of seizure tends to grow with respect to the baseline. Here we can see also the main statistics relative to each visit period and with respect to the placebo group and the progabide group, respectively:
+In the following plot we can see the seizure trend in the four visits period compared to the baseline $\frac{SC_t}{BS_4}$: Fig. \ref{fig:treatment_plot} suggests that the use of progabide has a positive response on the patient. 
+We can notice that the seizure count ratio through the four periods has a decreasing trend for the patients assuming the drug. On the other hand, the placebo group is not generally decreasing, even though their ratio distribution presents several fluctuations. A notable difference can be noticed in the median value of the ratio distribution: for the placebo group is always bigger than 1, which means that the number of seizure tends to grow with respect to the baseline. Below we can see the main statistics for each visit period, respectively both for the placebo group and the progabide group:
 
 ```{r dataset_robustbase,echo=FALSE, results=TRUE, warning=FALSE,message=FALSE}
 library(reshape2)
@@ -129,33 +134,549 @@ treatment_plot
 
 
 It's important to point out that there are differences in the seizure counts within patients but also between patients over time. 
-Specifically, one  of the patient seems to have an extreme number of seizure counts at all time points compared to the other one, while another patient registered a really high number of seizures at the third visit with respect to his/her own standards. 
+Specifically, one of the patient seems to have an extreme number of seizure counts at all the time points compared to the other one. Another patient registered a considerably high number of seizures at the third visit with respect to his/her own standards. Even so, Thall and Vail (1990) find no clinical basis to tag this two patients as an extreme case, thereby I am not going to mark this patients as outlier and I am going to use the whole dataset as it is. 
+
+```{r data, echo = FALSE }
 
 
-# 2. Model
+data_jags = list(N = 59, T = 4,
+            
+            y = structure(.Data = c(5, 3, 2, 4, 7, 5, 6, 40,  5, 14, 26, 12,  4,  7, 16, 11,  0, 37,  3, 3,  3,  3,  2,  8, 18,  2,  3, 13, 11,  8,  0,  3,  2,  4, 22,  5,  2,  3,  4,  2,  0,  5, 11, 10, 19,  1,  6,  2, 102,4,  8,  1, 18,  6,  3,  1,  2,  0,  1,  3, 5, 4, 4, 18, 2, 4, 20, 6, 13, 12, 6, 4, 9, 24, 0, 0, 29, 5, 0, 4, 4, 3, 12, 24, 1, 1, 15, 14, 7, 4, 6, 6, 3, 17, 4, 4, 7, 18, 1, 2, 4, 14, 5, 7, 1, 10, 1, 65, 3, 6, 3, 11, 3, 5, 23, 3, 0, 4, 3, 3, 0, 1, 9, 8, 0, 23, 6, 6, 6, 8, 6, 12, 10, 0, 3, 28, 2, 6,  3, 3, 3, 2, 76, 2, 4, 13, 9, 9, 3, 1, 7, 1, 19, 7, 0, 7, 2, 1, 4, 0, 25, 3, 6, 2, 8, 0, 72, 2, 5, 1, 28, 4, 4, 19, 0, 0, 3, 3, 3, 5, 4, 21, 7, 2, 12, 5, 0, 22, 4, 2, 14, 9, 5, 3, 29, 5, 7, 4, 4, 5, 8, 25, 1, 2, 12, 8, 4, 0, 3, 4, 3, 16, 4, 4, 7, 5, 0, 0, 3, 15, 8, 7, 3, 8, 0, 63, 4, 7, 5, 13, 0, 3, 8, 1, 0, 2), 
+                          .Dim = c(59, 4)),
+            Trt = c( 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                     0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1),
+            Base = c( 11, 11, 6, 8, 66, 27, 12, 52, 23, 10,
+                      52, 33, 18, 42, 87, 50, 18,111, 18, 20,
+                      12, 9, 17, 28, 55, 9, 10, 47, 76, 38,
+                      19, 10, 19, 24, 31, 14, 11, 67, 41, 7,
+                      22, 13, 46, 36, 38, 7, 36, 11,151, 22,
+                      41, 32, 56, 24, 16, 22, 25, 13, 12),
+            Age = c(31,30,25,36,22,29,31,42,37,28,
+                    36,24,23,36,26,26,28,31,32,21,
+                    29,21,32,25,30,40,19,22,18,32,
+                    20,30,18,24,30,35,27,20,22,28,
+                    23,40,33,21,35,25,26,25,22,32,
+                    25,35,21,41,32,26,21,36,37),
+            V4 = c(0, 0, 0, 1))
+
+```
+
+
+# 2. Model definition
+
+
+The main question of interest is whether taking this anti-convulsant drug can reduce the number of epileptic seizures compared to placebo. Usually for count data a poisson model can represent a good choice, but in many applications (especially in longitudinal and\/or biomedical data) such a simple functional relationship is inadequate to handle the heterogeneity of the data.
+
+
+## 2.1 Model 0: Basic Poisson
+
+Let's try to fit a simple poisson model considering the index *j* for the the observation level (1, ..., 59), the index *k* for the visit period ( from 1 to 4) and few transformations applied to the variables: to \{Baseline Seizure Count (BS_4)} and \it{age} I have applied the natural logarithm, as used in other studies (i.e. Breslow and Clayton, 1993 and also Thall and Vail, 1990).
+
+
+\[Y_{j,k} \sim Pois( \mu_{j,k}) \]
+\[log(\mu_{j,k}) = \alpha_{0} + \beta_1 log(BS_{4 j}) + \beta_2  Trt_j + \beta_3 (log(BS_{4 j})*T_j]) + \beta_4 log(Age_j) + \beta_5 V_{4 k} \]
+
+Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+
+
+### BUGS MODEL
+
+```{r bugs_poisson_model, warning=FALSE,message=FALSE}
+
+poissonModelString = "model
+{
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+  log(mu[j, k]) <- a0 + beta.Base * log.Base4[j]
+  + beta.Trt * Trt[j] 
+  + beta.BT * BT[j] 
+  + beta.Age * log.Age[j]
+  + beta.V4 * V4[k] 
+  y[j, k] ~ dpois(mu[j, k])
+  }
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+
+  # priors:
+  a0 ~ dnorm(0.0,1.0E-3)
+  beta.Base ~ dnorm(0.0,1.0E-3)
+  beta.Trt ~ dnorm(0.0,1.0E-3);
+  beta.BT ~ dnorm(0.0,1.0E-3)
+  beta.Age ~ dnorm(0.0,1.0E-3)
+  beta.V4 ~ dnorm(0.0,1.0E-3)
+  # re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base - beta.Trt 
+  - beta.BT - beta.Age  - beta.V4 
+}"
+writeLines(poissonModelString , "basicPoisson.txt")
+```
+
+
+### JAGS MODEL
+```{r poisson_model, message=FALSE, warning=FALSE}
+library(rjags)
+library(R2jags)
+parametersPoisson = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0")
+  
+basicPoissonJags = jags(model.file = "basicPoisson.txt",
+                      parameters.to.save =  parametersPoisson, 
+                      data = data_jags, n.chains=3)
+
+basicPoissonJags
+
+set.seed(200908)
+burn = 3000
+iter = 35000
+
+update(basicPoissonJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(basicPoissonJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(basicPoissonJags))
+# i am going to add a thining factor of 10
+```
+
+In the first model, created with 3 chains, as we can see from the values of the *R.hat* of the results above the parameters converged.
+
+The n.eff is a crude measure of effective sample size (*ESS*), that is the number of effectively independent draws from the posterior distribution that the Markov chain is equivalent to. When the *ESS* of a parameter is small (<100) then the estimate of the posterior distribution of that parameter will be poor with consequently large standard deviation for the parameter. On the other hand, a too big *ESS* (>10000) can represent a waste of computational resources. In our case the values are big enough, even though much different from each other. 
+
+The diagnostic obtained using the *gemalman.diag* function gives a factor of 1 for each parameter. This means that between variance and within chain variance are equal and so that the chains don't have notable difference between each other.
+
+
+Thanks to the autocorrelation diagnostic we can see that we need a lot more iterations or a thining factor, since the autocorelation values are to high (they starts to become better in the lag 5, but still a little bit higher than what I like to see). I chose to use a thining factor since it allows me to obtaine the same results without wasting additional computational time and memory. Specifically I chose to use an thining factor of 10, since it's where the autocorellation starts to be significantly low for each parameters.
+
+
+<!-- The gelman.diag gives you the scale reduction factors for each parameter. A factor of 1 means that between variance and within chain variance are equal, larger values mean that there is still a notable difference between chains. Often, it is said that everything below 1.1 or so is OK, but note that this is more a rule of thumb. The gelman,plot shows you the development of the scale-reduction over time (chain steps), which is useful to see whether a low chain reduction is also stable (sometimes, the factors go down and then up again, as you will see). Also, note that for any real analysis, you have to make sure to discard any bias that arises from the starting point of your chain (burn-in), typical values here are a few 1000-10000 steps. The gelman plot is also a nice tool to see roughly where this point is, that is, from which point on the chains seem roughly converged. -->
+
+
+<!-- The first model was implemented with a burn-in of 3000, which means that the first 3000 iteration will be discarded in order to allow the convergence of the parameters. -->
+
+
+### SIMULATION AND DIC COMPUTATION
+```{r poisson_simulation}
+library(coda)
+basicPoissonSim = coda.samples(model = basicPoissonJags$model,
+                            variable.names = parametersPoisson,
+                            n.iter = iter, thin = 10)
+summary(basicPoissonSim)
+#let's compute the dic for this value
+dicBasicPoisson = dic.samples(basicPoissonJags$model,
+                              n.iter= iter, 
+                              thin = 10)
+dicBasicPoisson
+
+#> dicBasicPoissonMean deviance:  3347 penalty 5.847 Penalized deviance: 3353 
+
+
+```
+
+
+
+Looking at these simulations we can see that the model obtained low standard error, which gives more reliability to our parameters estimation. 
+
+
+
+That being said, the DIC value obtained for this model (3353) point out that the model itself is not good enough to explain the variability of our data. It's clear that this model is not taking in consideration some really important aspect of this data. As I said before, a really important aspect that must be taken in consideration it's related to the differences that we could notice within patients but also between a specific patient over time. This is because in our data is present a problem of overdispersion.
+
+<!-- Talking about this specific case, changes in seizure frequency may occur due to probabilistic variation around an underlying seizure risk state caused by normal fluctuations from natural history.  -->
+
+<!-- --- di base le seizure cambiano da individuo ad indivisuo e  nel tempo, nonostante ci siano casi di outlier, che hanno un numero sempre molto elevato di seizure o un numero di seizure in uno specifico periodo molto alto -->
 
 
 
 
-
-The main question of interest is whether taking this anti-convulsant drug reduced the number of epileptic seizures compared with placebo. Along to the descriptive statistics,......................? 
-
-
-## 2.1 Overdispersion
-In general, count data could be fitted really well by a poisson distribution but let's take a look to the density of the number of seizure at each visit in Fig. \ref{fig:density_period} and .... overdispersions 
+## 2.2 Overdispersion in epileptic data
 
 
-```{r density_period, echo=FALSE, fig.align='center', results= TRUE, message=FALSE, warning=FALSE, fig.cap='Density of the number of seizure for each period', fig.height=4}
+
+The standard Poisson model implies that the mean and variance are equal, this implication is usually restrictive because count data samples often have the variance either lower than the mean (the so called underdispersion) or greater than the mean (also known as overdispersion). 
+
+```{r overdispersion_check, echo=FALSE, results= 'hide'}
+
+mean(epil_melt$value)
+var(epil_melt$value)
+
+mean(epilepsy$Y1)
+var(epilepsy$Y1)
+mean(epilepsy$Y2)
+var(epilepsy$Y2)
+mean(epilepsy$Y3)
+var(epilepsy$Y3)
+mean(epilepsy$Y4)
+var(epilepsy$Y4)
+epil = MASS::epil
+```
+
+
+In this case, as shown from the plot below (Fig. \ref{fig:density_period}) that represent the density distributions of the seizure count in the four visit period, an high overdispersion is present, indeed the mean seizure count is 8.26 (specifically for the 4 period is respectively: 8.94, 8.36, 8.44, 7.31) whereas the variance is equal to 152.68 (for the 4 visit period is respectively: 220.08, 103.79, 200.18, 93.11). Therefore, using the Poisson model in its basic form would not take in account this feature in the correct way. Let's take some test to proof that in this data are overdispersed:
+
+```{r density_period, echo=FALSE, fig.align='center', results= TRUE, message=FALSE, warning=FALSE, fig.cap='Density of the number of seizure for each visit period.', fig.height=4}
 
 
 hist<- ggplot(epil_melt, aes(x = value, fill = factor(variable)))+
   geom_density(alpha = 0.7, show.legend = FALSE) +
-  facet_grid(.~variable) 
+  facet_grid(.~variable)
 #  geom_histogram(aes(y = ..density..),binwidth = 0.5, alpha = 0.6 )
-  
-  
+
 hist
 
 
 ```
-Let's take some test
+
+
+```{r dispersion_test, message=FALSE, warning=FALSE}
+library(AER)
+frequentistPoissonModel = glm(y ~ trt + lbase + lage+ V4 + lbase:trt,
+                              data = epil,
+                              family = poisson) 
+dispersiontest(frequentistPoissonModel)
+```
+
+Here, with this first overdispersion test, we clearly see that there is evidence of overdispersion which could also be proof by fitting another frequentist model with a different distribution family: the quasi-poisson, a quasi-families which augment the normal poisson by adding a dispersion parameter (Poisson data -> $\bar{Y}= s_Y^2$ whilst QuasiPoisson data -> $\bar{Y}= \tau *s_Y^2$ where $\tau$ is the overdispersion parameter).
+
+```{r quasipoisson_test, message=FALSE, warning=FALSE}
+
+frequentist_quasipoisson = glm(y ~ trt + lbase + lage+ V4 + lbase:trt, data = epil,family="quasipoisson") 
+
+# dispersion coefficient:
+summary(frequentist_quasipoisson)$dispersion 
+
+# significance for overdispersion computed with the chi-square:
+pchisq(summary(frequentist_quasipoisson)$dispersion * frequentistPoissonModel$df.residual, frequentistPoissonModel$df.residual, lower = F) 
+```
+
+The dispersion parameter of this model (4.41) validate the result obtained in the overdispension test, with a really high level of significance as the $\chi^2$ attest.
+
+<!-- It has been argued that thinning is actually not very useful, unless one wants to reduce the amount of memory and storage space in long chains. Instead of thinning to, say, keep only 1 out every 10 samples, it is usually more efficient (in terms of the effective sample size) to just run a chain 10 times as long, but it will take 10 times more storage space. -->
+
+When talking about overdispersion is important also to consider the ratio of 0 value in our data, which regularly in count data has an higher incidence than the expected from the Poisson model: 
+
+
+```{r zero_dispersion}
+
+#proportion of 0's in the data
+sum(epil$y==0)/length(epil$y)
+
+set.seed(1289)
+#proportion of 0's expected from a Poisson distribution
+mu <- mean(epil$y)
+poisson_distribution <- rpois(10000, mu)
+sum(poisson_distribution  == 0) /length(poisson_distribution )
+
+
+```
+
+
+The observed data has a higher proportion of zero with respect to the one expected, this means that our data could be zero inflated.   
+
+### How to deal with overdisperision
+
+To account for overdispersion a general solution is to use a quasi-poisson distribution, which is not estimated via maximum likelihood that means that we can't use either AIC value (we can't compute it) nor the deviance (is the same of a simple poisson).
+
+Other way to aproach to count data with overdispersion is the use of a **negative binomial model** ( $NB\bigr(p, r\bigl)$ ), which technically count the number of failures before the first success, and helps with overdispersion caused by an unmeasured latent variable. The parameter *r*, similarly to the $\tau$ parameter of the quasi-poisson model, represent a dispersion parameter. In this model, the variance is a function of his mean that is $var\bigr(Y\bigl) = \mu + \mu^2/r$, and as this dispersion parameter gets larger and larger, the variance converges to the same value as the mean, and the Negative Binomial turns into a Poisson distribution.
+
+
+As I already said before, in this data there are difference in the seizure counts within patients but also between patients over time, and this could justify the use of random effects parameters in the model(either in a simple poisson or a negative binomial):
+
+- A first random effect for the subject, hence a random effect for each individual observation;
+- Another random effect related to the subject combined to the visit, hence a random effect for each individual observation and each individual time period.
+
+
+To avoid the zero-inflation problem we can apply to the poisson or the negative binomial a zero-inflated model, and therefore a solution could be using the ZIP model with random effects or the ZINB model. 
+
+## 2.3 Model 1: Negative Binomial
+
+Let's define the model:
+
+
+\[Y_{j,k} \sim NegBinom(p_{j,k},r) \]
+
+where p[j,k] is the probability of *"success"* of the patient in that period visit and is equal to \[r/(r+\lambda_{j,k}\]and r is the overdispersion parameter
+\[r \sim U(0.0001, 1000)\]
+
+To overcome high autocorrelation and helps the convergence of the markov chains I standardized each covariates by its mean, in this way I can ensure approximate prior independence between the regression coefficients:
+
+\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_4j]) - mean(log(BS_4))) + \beta_2  (Trt[j]- mean(Trt)) + \beta_3 (log(BS_4[j])*T [j]) + \beta_4 (log(Age[j])- mean(log(Age))) + \beta_5 (V_4[k]-mean(V_4)) \]
+
+Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+
+This can be overcome by standardizing each covariate about its
+mea
+
+### BUGS MODEL
+```{r negative_binomial_model}
+
+NegativeBinomialModelString = "model{
+  # likelihood
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+
+
+  log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar)
+  p[j,k] <- r/(r+lambda[j,k])
+  y[j, k] ~ dnegbin( p[j,k], r)
+  }
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  r ~ dunif(0.0001,1000)
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,1.0E-4)
+  beta.Trt ~ dnorm(0.0,1.0E-4);
+  beta.BT ~ dnorm(0.0,1.0E-4)
+  beta.Age ~ dnorm(0.0,1.0E-4)
+  beta.V4 ~ dnorm(0.0,1.0E-4)
+  # re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+
+}"
+writeLines(NegativeBinomialModelString, "NBmodel.txt")
+
+
+```
+
+### JAGS MODEL
+```{r jagsModelNegBinomial1}
+  
+parametersNB = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0")
+
+negBinomialJags= jags(model.file = "NBmodel.txt", 
+                      parameters.to.save =  parametersNB, 
+                      data = data_jags,
+                      n.chains= 3,
+                      n.thin = 10,
+                      n.burnin = 8000,
+                      n.iter = 35000)
+
+negBinomialJags
+
+burn = 3000
+iter = 35000
+
+update(negBinomialJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(negBinomialJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(negBinomialJags))
+# i am going to add a thining factor of 10
+
+```
+
+The negative Binomial model needs an higher burn-in value to reach the convergence, with a starting value of 8000 and with a number of iteration equal to 35000 I implemented this model. Both the Rhat and the n.eff values are fine, every parameters reached the convergence and the ESS are big enough. The convergence of the parameters is confirmed by the gelman diagnostic too, and trough the autocorrelation diagnostic I decide to increase the thining factor from 10 to 50.
+
+### SIMULATION AND DIC COMPUTATION
+```{r negativeBinomialSimulation}
+
+negBinomialSim= coda.samples(model = negBinomialJags$model, 
+                             variable.names = parametersNB, 
+                             n.iter = iter, 
+                             thin = 50)
+
+summary(negBinomialSim)
+
+dicNegBin = dic.samples(negBinomialJags, n.iter = iter, thin = 50)
+
+dicNegBin
+
+```
+
+
+-------------------
+
+
+## 2.3 Negative Binomial with random effects
+
+Let's introduce the Random Effects parameter and define this new model:
+
+
+
+\[Y_{j,k} \sim NegBinom(p_{j,k},r) \]
+
+where p[j,k] is the probability of *"success"* of the patient in that period visit and is equal to \[r/(r+\lambda_{j,k}\]and r is the overdispersion parameter
+\[r \sim U(0.0001, 1000)\]
+
+To overcome high autocorrelation and helps the convergence of the markov chains I standardized each covariates by its mean, in this way I can ensure approximate prior independence between the regression coefficients:
+
+\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_{4 j}) - mean(log(BS_4))) + \beta_2  (Trt_j- mean(Trt)) + \beta_3 (log(BS_{4 j})*T [j]) + \beta_4 (log(Age_j)- mean(log(Age))) + \beta_5 (V_{4 k}-mean(V_4)) + b_{j,k} + b_{1 j}\]
+
+where b_1 represent the random effects related to the individual patient:
+
+\[b_{1,j} \sim Norm (0, tau.b_1)\]
+
+whilst b represent the combined random effects related to the patient and the single visit period:
+
+Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+### BUGS MODEL
+```{r negative_binomial_RE_model}
+
+NegativeBinomialREModelString = "model{
+  # likelihood
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+
+
+  log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar) 
+  + b1[j] + b[j, k]
+  
+  b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
+  p[j,k] <- r/(r+lambda[j,k])
+  y[j, k] ~ dnegbin( p[j,k], r)
+  }
+  
+  b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  r ~ dunif(0.0001,1000)
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,1.0E-4)
+  beta.Trt ~ dnorm(0.0,1.0E-4);
+  beta.BT ~ dnorm(0.0,1.0E-4)
+  beta.Age ~ dnorm(0.0,1.0E-4)
+  beta.V4 ~ dnorm(0.0,1.0E-4)
+  
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  
+# re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+
+}"
+writeLines(NegativeBinomialModelString, "NBREmodel.txt")
+```
+
+### JAGS MODEL
+```{r jagsModelNegBinomial1}
+  
+parametersNBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "tau.b", "tau.b")
+
+negBinomialREJags= jags(model.file = "NBREmodel.txt", 
+                      parameters.to.save =  parametersNBre, 
+                      data = data_jags,
+                      n.chains= 3,
+                      n.thin = 10,
+                      n.burnin = 8000,
+                      n.iter = 35000)
+
+negBinomialREJags
+
+burn = 3000
+iter = 35000
+
+update(negBinomialREJags$model, burn)
+
+
+#let's check for convergence
+gelman.diag(as.mcmc(negBinomialREJags))
+
+#let's see the autocorrelation
+autocorr.diag(as.mcmc(negBinomialREJags))
+# i am going to add a thining factor of 10
+
+```
+### SIMULATION AND DIC COMPUTATION
+```{r negativeBinomialSimulation}
+
+negBinomialRESim= coda.samples(model = negBinomialREJags$model, 
+                             variable.names = parametersNBre, 
+                             n.iter = iter, 
+                             thin = 50)
+
+summary(negBinomialRESim)
+
+dicNegBinRE = dic.samples(negBinomialREJags, n.iter = iter, thin = 50)
+
+dicNegBinRE
+
+```
+
+
+## 2.4 Poisson with random effects
+
+### BUGS MODEL
+
+### JAGS MODEL
+
+### SIMULATION AND DIC COMPUTATION
+
+## 2.5 Zero-Inflated Negativ Binomial
+
+### BUGS MODEL
+
+### JAGS MODEL
+
+### SIMULATION AND DIC COMPUTATION
+
+## 2.6 Zero-Inflated Poisson
+
+
+### BUGS MODEL
+
+### JAGS MODEL
+
+### SIMULATION AND DIC COMPUTATION
+
+
+## 3. MCMC Diagnostic
+
+
+## 4. Model Comparison
+
+3.3 Bur
+
+
+
+the MCMC sampling chain was adequately mixed and the retained samples independent.
+The chains appear well mixed and stable
+ the samples are now less auto-correlated and the chains are also arguably mixed a little better.
+
+
+
+A combination of normal and independent Gamma random effects. This
+is the most commonly used form of the combined model in which the
+normal random effects induce/account for correlation while the Gamma
+random effects induce/account for overdispersion. It is model (3.16) but
+with ??i diagonal.
