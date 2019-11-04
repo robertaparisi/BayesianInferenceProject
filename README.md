@@ -26,7 +26,7 @@ tinytex::pdflatex('test.tex')
 
 ## PROJECT
 
-----------------------------------------------------------------------------
+
 
 This project try to highlight some evidence for a anti-epileptic drug (progabide). The data that I am using are count data: the response variable represent the number of seizure occurs in a two weeks period, for both people who are treated with progabide and placebo as well. 
 
