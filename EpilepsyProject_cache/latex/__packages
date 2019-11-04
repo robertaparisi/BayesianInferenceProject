@@ -1,0 +1,15 @@
+base
+robustbase
+reshape2
+ggplot2
+coda
+rjags
+R2jags
+carData
+car
+zoo
+lmtest
+sandwich
+survival
+AER
+mcmcplots

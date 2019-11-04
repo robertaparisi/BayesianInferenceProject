@@ -1,0 +1,27 @@
+model
+{
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+  log(mu[j, k]) <- a0 + beta.Base * log.Base4[j]
+  + beta.Trt * Trt[j] 
+  + beta.BT * BT[j] 
+  + beta.Age * log.Age[j]
+  + beta.V4 * V4[k] 
+  y[j, k] ~ dpois(mu[j, k])
+  }
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+
+  # priors:
+  a0 ~ dnorm(0.0,1.0E-3)
+  beta.Base ~ dnorm(0.0,1.0E-3)
+  beta.Trt ~ dnorm(0.0,1.0E-3);
+  beta.BT ~ dnorm(0.0,1.0E-3)
+  beta.Age ~ dnorm(0.0,1.0E-3)
+  beta.V4 ~ dnorm(0.0,1.0E-3)
+  # re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base - beta.Trt 
+  - beta.BT - beta.Age  - beta.V4 
+}

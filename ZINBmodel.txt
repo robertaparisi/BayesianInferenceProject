@@ -1,0 +1,52 @@
+model{
+ # likelihood
+  for(j in 1 : N) {
+  for(k in 1 : T) {
+
+
+  log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
+  + beta.Trt * (Trt[j] - Trt.bar)
+  + beta.BT * (BT[j] - BT.bar)
+  + beta.Age * (log.Age[j] - log.Age.bar)
+  + beta.V4 * (V4[k] - V4.bar) 
+  + b1[j] + b[j, k]
+  
+  b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
+  p[j,k] <- r[j,k]/(r[j,k]+lambda[j,k]*(1-z[j,k]))
+  y[j, k] ~ dnegbin( p[j,k], r[j,k])
+  r[j,k] ~ dunif(0.0001,1000)
+  z[j,k] ~ dbern(psi) 
+  }
+  
+  b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
+  BT[j] <- Trt[j] * log.Base4[j] # interaction
+  log.Base4[j] <- log(Base[j] / 4)
+  log.Age[j] <- log(Age[j])
+  }
+  
+  #covariate means:
+  log.Age.bar <- mean(log.Age[])
+  Trt.bar <- mean(Trt[])
+  BT.bar <- mean(BT[])
+  log.Base4.bar <- mean(log.Base4[])
+  V4.bar <- mean(V4[])
+  # priors:
+  
+  a0 ~ dnorm(0.0,1.0E-4)
+  beta.Base ~ dnorm(0.0,1.0E-4)
+  beta.Trt ~ dnorm(0.0,1.0E-4);
+  beta.BT ~ dnorm(0.0,1.0E-4)
+  beta.Age ~ dnorm(0.0,1.0E-4)
+  beta.V4 ~ dnorm(0.0,1.0E-4)
+  psi ~ dunif(0, 1) 
+
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b <- 1.0/ sqrt(tau.b)
+  
+# re-calculate intercept on original scale:
+  alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
+  - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
+
+}

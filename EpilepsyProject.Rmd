@@ -8,9 +8,6 @@ output:
     latex_engine: xelatex
 ---
 
-# Abstract
-
-The aim of this work is to carry out a fully Bayesian Analysis and study the effect of a drug, progabide, in some epilectic patient. Specifically ...... 
 
 
 #1. Dataset
@@ -48,7 +45,7 @@ The median seizure count before to start the trial ($BS_4$) was 5.5 and the aver
 
 
 
-```{r baseline_summary, echo = FALSE, message=FALSE, warning=FALSE}
+```{r baseline_summary, echo = FALSE, message=FALSE, warning=FALSE, cache = TRUE }
 library("robustbase")
 epilepsy = robustbase::epilepsy
 
@@ -67,7 +64,7 @@ summary(epilepsy[epilepsy$Trt!= "placebo",]$Base4)
 In the following plot we can see the seizure trend in the four visits period compared to the baseline $\frac{SC_t}{BS_4}$: Fig. \ref{fig:treatment_plot} suggests that the use of progabide has a positive response on the patient. 
 We can notice that the seizure count ratio through the four periods has a decreasing trend for the patients assuming the drug. On the other hand, the placebo group is not generally decreasing, even though their ratio distribution presents several fluctuations. A notable difference can be noticed in the median value of the ratio distribution: for the placebo group is always bigger than 1, which means that the number of seizure tends to grow with respect to the baseline. Below we can see the main statistics for each visit period, respectively both for the placebo group and the progabide group:
 
-```{r dataset_robustbase,echo=FALSE, results=TRUE, warning=FALSE,message=FALSE}
+```{r dataset_robustbase, cache = TRUE ,echo=FALSE, results=TRUE, warning=FALSE,message=FALSE}
 library(reshape2)
 library(ggplot2)
 library("robustbase")
@@ -81,7 +78,7 @@ base4 = (epilepsy$Base/4)
 
 * Visit period 1:
 
-```{r distoV1Placebo, echo=FALSE}
+```{r distoV1Placebo,cache = TRUE , echo=FALSE}
 summary(epilepsy$Y1[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
 
 
@@ -90,7 +87,7 @@ summary(epilepsy$Y1[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="place
 
 * Visit period 2:
 
-```{r distoV2Placebo, echo=FALSE}
+```{r distoV2Placebo,cache = TRUE , echo=FALSE}
 summary(epilepsy$Y2[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
 
 summary(epilepsy$Y2[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
@@ -98,7 +95,7 @@ summary(epilepsy$Y2[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="place
 
 * Visit period 3:
 
-```{r distoV3Placebo, echo=FALSE}
+```{r distoV3Placebo,cache = TRUE , echo=FALSE}
 summary(epilepsy$Y3[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
 
 summary(epilepsy$Y3[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
@@ -107,7 +104,7 @@ summary(epilepsy$Y3[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="place
 * Visit period 4:
 
 
-```{r distoV4Placebo, echo=FALSE}
+```{r distoV4Placebo,cache = TRUE , echo=FALSE}
 summary(epilepsy$Y4[epilepsy$Trt=="placebo"]/epilepsy$Base4[epilepsy$Trt=="placebo"])
 
 summary(epilepsy$Y4[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="placebo"])
@@ -115,7 +112,7 @@ summary(epilepsy$Y4[epilepsy$Trt!="placebo"]/epilepsy$Base4[epilepsy$Trt!="place
 
 
 
-```{r treatment_plot, fig.align='center', fig.height= 4,results= TRUE,echo = FALSE, message=FALSE, warning=FALSE, fig.cap='Rate of current seizure count over the baseline seizure count. The baseline is considerd divided by 4 since it\'s referring to an 8 weeks period.'}
+```{r treatment_plot,cache = TRUE , fig.align='center', fig.height= 4,results= TRUE,echo = FALSE, message=FALSE, warning=FALSE, fig.cap='Rate of current seizure count over the baseline seizure count. The baseline is considerd divided by 4 since it\'s referring to an 8 weeks period.'}
 treatment_plot <- ggplot(epil_melt, aes(y = value/base4, x= factor(Trt), fill = factor(variable) )) +
   geom_boxplot(alpha = 0.48)+
   facet_grid(.~variable) +
@@ -128,15 +125,12 @@ treatment_plot <- ggplot(epil_melt, aes(y = value/base4, x= factor(Trt), fill = 
 treatment_plot
 ```
 
-```{r visit summary, echo = FALSE, message=FALSE, warning=FALSE}
-
-```
 
 
 It's important to point out that there are differences in the seizure counts within patients but also between patients over time. 
 Specifically, one of the patient seems to have an extreme number of seizure counts at all the time points compared to the other one. Another patient registered a considerably high number of seizures at the third visit with respect to his/her own standards. Even so, Thall and Vail (1990) find no clinical basis to tag this two patients as an extreme case, thereby I am not going to mark this patients as outlier and I am going to use the whole dataset as it is. 
 
-```{r data, echo = FALSE }
+```{r data,cache = TRUE , echo = FALSE }
 
 
 data_jags = list(N = 59, T = 4,
@@ -178,15 +172,15 @@ Let's try to fit a simple poisson model considering the index *j* for the the ob
 
 
 \[Y_{j,k} \sim Pois( \mu_{j,k}) \]
-\[log(\mu_{j,k}) = \alpha_{0} + \beta_1 log(BS_{4 j}) + \beta_2  Trt_j + \beta_3 (log(BS_{4 j})*T_j]) + \beta_4 log(Age_j) + \beta_5 V_{4 k} \]
+\[log(\mu_{j,k}) = \alpha_{0} + \beta_1 log(BS_{4 j}) + \beta_2  Trt_j + \beta_3 (log(BS_{4 j})*T_j) + \beta_4 log(Age_j) + \beta_5 V_{4 k} \]
 
-Prior:
+Covariates Prior:
 \[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
 
 
 ### BUGS MODEL
 
-```{r bugs_poisson_model, warning=FALSE,message=FALSE}
+```{r bugs_poisson_model,cache = TRUE , warning=FALSE,message=FALSE}
 
 poissonModelString = "model
 {
@@ -220,7 +214,8 @@ writeLines(poissonModelString , "basicPoisson.txt")
 
 
 ### JAGS MODEL
-```{r poisson_model, message=FALSE, warning=FALSE}
+
+```{r poisson_model, cache = TRUE ,message=FALSE, warning=FALSE}
 library(rjags)
 library(R2jags)
 
@@ -264,7 +259,7 @@ Thanks to the autocorrelation diagnostic we can see that we need a lot more iter
 
 
 ### SIMULATION AND DIC COMPUTATION
-```{r poisson_simulation}
+```{r poisson_simulation, cache = TRUE }
 library(coda)
 basicPoissonSim = coda.samples(model = basicPoissonJags$model,
                             variable.names = parametersPoisson,
@@ -301,7 +296,7 @@ That being said, the DIC value obtained for this model (3353) point out that the
 
 The standard Poisson model implies that the mean and variance are equal, this implication is usually restrictive because count data samples often have the variance either lower than the mean (the so called underdispersion) or greater than the mean (also known as overdispersion). 
 
-```{r overdispersion_check, echo=FALSE, results= 'hide'}
+```{r overdispersion_check,cache = TRUE , echo=FALSE, results= 'hide'}
 
 mean(epil_melt$value)
 var(epil_melt$value)
@@ -320,7 +315,7 @@ epil = MASS::epil
 
 In this case, as shown from the plot below (Fig. \ref{fig:density_period}) that represent the density distributions of the seizure count in the four visit period, an high overdispersion is present, indeed the mean seizure count is 8.26 (specifically for the 4 period is respectively: 8.94, 8.36, 8.44, 7.31) whereas the variance is equal to 152.68 (for the 4 visit period is respectively: 220.08, 103.79, 200.18, 93.11). Therefore, using the Poisson model in its basic form would not take in account this feature in the correct way. Let's take some test to proof that in this data are overdispersed:
 
-```{r density_period, echo=FALSE, fig.align='center', results= TRUE, message=FALSE, warning=FALSE, fig.cap='Density of the number of seizure for each visit period.', fig.height=4}
+```{r density_period, cache = TRUE ,echo=FALSE, fig.align='center', results= TRUE, message=FALSE, warning=FALSE, fig.cap='Density of the number of seizure for each visit period.', fig.height=4}
 
 
 hist<- ggplot(epil_melt, aes(x = value, fill = factor(variable)))+
@@ -334,7 +329,7 @@ hist
 ```
 
 
-```{r dispersion_test, message=FALSE, warning=FALSE}
+```{r dispersion_test, cache = TRUE ,message=FALSE, warning=FALSE}
 library(AER)
 frequentistPoissonModel = glm(y ~ trt + lbase + lage+ V4 + lbase:trt,
                               data = epil,
@@ -344,7 +339,7 @@ dispersiontest(frequentistPoissonModel)
 
 Here, with this first overdispersion test, we clearly see that there is evidence of overdispersion which could also be proof by fitting another frequentist model with a different distribution family: the quasi-poisson, a quasi-families which augment the normal poisson by adding a dispersion parameter (Poisson data -> $\bar{Y}= s_Y^2$ whilst QuasiPoisson data -> $\bar{Y}= \tau *s_Y^2$ where $\tau$ is the overdispersion parameter).
 
-```{r quasipoisson_test, message=FALSE, warning=FALSE}
+```{r quasipoisson_test, cache = TRUE ,message=FALSE, warning=FALSE}
 
 frequentist_quasipoisson = glm(y ~ trt + lbase + lage+ V4 + lbase:trt, data = epil,family="quasipoisson") 
 
@@ -362,7 +357,7 @@ The dispersion parameter of this model (4.41) validate the result obtained in th
 When talking about overdispersion is important also to consider the ratio of 0 value in our data, which regularly in count data has an higher incidence than the expected from the Poisson model: 
 
 
-```{r zero_dispersion}
+```{r zero_dispersion,cache = TRUE }
 
 #proportion of 0's in the data
 sum(epil$y==0)/length(epil$y)
@@ -375,6 +370,7 @@ sum(poisson_distribution  == 0) /length(poisson_distribution )
 
 
 ```
+
 
 
 The observed data has a higher proportion of zero with respect to the one expected, this means that our data could be zero inflated.   
@@ -399,23 +395,21 @@ To avoid the zero-inflation problem we can apply to the poisson or the negative 
 Let's define the model:
 
 
-\[Y_{j,k} \sim NegBinom(p_{j,k},r) \]
+\[Y_{j,k} \sim NegBinom(p_{j,k},r_{j,k}) \]
 
-where p[j,k] is the probability of *"success"* of the patient in that period visit and is equal to \[r/(r+\lambda_{j,k}\]and r is the overdispersion parameter
-\[r \sim U(0.0001, 1000)\]
+where $p_{j,k}$ is the probability of *"success"* of the patient in that period visit and is equal to \[\frac{r_{j,k}}{r_{j,k}+\lambda_{j,k}}\]and r_{j,k} is the overdispersion parameter
+\[r_{j,k} \sim U(0.0001, 1000)\]
 
 To overcome high autocorrelation and helps the convergence of the markov chains I standardized each covariates by its mean, in this way I can ensure approximate prior independence between the regression coefficients:
 
-\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_4j]) - mean(log(BS_4))) + \beta_2  (Trt[j]- mean(Trt)) + \beta_3 (log(BS_4[j])*T [j]) + \beta_4 (log(Age[j])- mean(log(Age))) + \beta_5 (V_4[k]-mean(V_4)) \]
+\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_{4 j}) - mean(log(BS_4))) + \beta_2  (Trt_j- mean(Trt)) + \\ \beta_3 (log(BS_{4j})*T_{j}) + \beta_4 (log(Age_j)- mean(log(Age))) + \beta_5 (V_{4k}-mean(V_4)) \]
 
-Prior:
+Covariates Prior:
 \[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
 
-This can be overcome by standardizing each covariate about its
-mea
 
 ### BUGS MODEL
-```{r negative_binomial_model}
+```{r negative_binomial_model,cache = TRUE }
 
 NegativeBinomialModelString = "model{
   # likelihood
@@ -428,8 +422,9 @@ NegativeBinomialModelString = "model{
   + beta.BT * (BT[j] - BT.bar)
   + beta.Age * (log.Age[j] - log.Age.bar)
   + beta.V4 * (V4[k] - V4.bar)
-  p[j,k] <- r/(r+lambda[j,k])
-  y[j, k] ~ dnegbin( p[j,k], r)
+  p[j, k] <- r[j,k]/(r[j,k]+lambda[j,k])
+  y[j, k] ~ dnegbin( p[j,k], r[j,k])
+  r[j, k] ~ dunif(0.0001,1000)
   }
   BT[j] <- Trt[j] * log.Base4[j] # interaction
   log.Base4[j] <- log(Base[j] / 4)
@@ -443,13 +438,14 @@ NegativeBinomialModelString = "model{
   log.Base4.bar <- mean(log.Base4[])
   V4.bar <- mean(V4[])
   # priors:
-  r ~ dunif(0.0001,1000)
+ 
   a0 ~ dnorm(0.0,1.0E-4)
   beta.Base ~ dnorm(0.0,1.0E-4)
   beta.Trt ~ dnorm(0.0,1.0E-4);
   beta.BT ~ dnorm(0.0,1.0E-4)
   beta.Age ~ dnorm(0.0,1.0E-4)
   beta.V4 ~ dnorm(0.0,1.0E-4)
+
   # re-calculate intercept on original scale:
   alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
   - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
@@ -461,7 +457,7 @@ writeLines(NegativeBinomialModelString, "NBmodel.txt")
 ```
 
 ### JAGS MODEL
-```{r jagsModelNegBinomial1}
+```{r jagsModelNegBinomial1,cache = TRUE }
   
 parametersNB = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0")
 
@@ -493,7 +489,7 @@ autocorr.diag(as.mcmc(negBinomialJags))
 The negative Binomial model needs an higher burn-in value to reach the convergence, with a starting value of 8000 and with a number of iteration equal to 35000 I implemented this model. Both the Rhat and the n.eff values are fine, every parameters reached the convergence and the ESS are big enough. The convergence of the parameters is confirmed by the gelman diagnostic too, and trough the autocorrelation diagnostic I decide to increase the thining factor from 10 to 50.
 
 ### SIMULATION AND DIC COMPUTATION
-```{r negativeBinomialSimulation}
+```{r negativeBinomialSimulation,cache = TRUE }
 
 negBinomialSim= coda.samples(model = negBinomialJags$model, 
                              variable.names = parametersNB, 
@@ -508,41 +504,46 @@ dicNegBin
 
 ```
 
+ 
+The DIC value starts dropping out, the negative association of the treatment variable seems to be really strong, which means that using progabide is associated with a decrease of the seizure count.
 
--------------------
 
+## 2.4 Model 2: Negative Binomial with Random Effects
 
-## 2.3 Negative Binomial with Random Effects
-
+As already said before, when repeated responses are observed, correlation can be incorporated in the model via a common random effect for all measurements referring to the same individual. This introduces a marginal correlation between repeated data, while interpretation is based on the conditional
+means. 
 Let's introduce the Random Effects parameter and define this new model:
 
 
+\[Y_{j,k} \sim NegBinom(p_{j,k},r_{j,k}) \]
 
-\[Y_{j,k} \sim NegBinom(p_{j,k},r) \]
-
-where p[j,k] is the probability of *"success"* of the patient in that period visit and is equal to \[r/(r+\lambda_{j,k}\]and r is the overdispersion parameter
-\[r \sim U(0.0001, 1000)\]
+where $p_{j,k}$ is the probability of *"success"* of the patient in that period visit and is equal to \[\frac{r_{j,k}}{r_{j,k}+\lambda_{j,k}}\]and r is the overdispersion parameter
+\[r_{j,k} \sim U(0.0001, 1000)\]
 
 To overcome high autocorrelation and helps the convergence of the markov chains I standardized each covariates by its mean, in this way I can ensure approximate prior independence between the regression coefficients:
 
-\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_{4 j}) - mean(log(BS_4))) + \beta_2  (Trt_j- mean(Trt)) + \beta_3 (log(BS_{4 j})*T [j]) + \beta_4 (log(Age_j)- mean(log(Age))) + \beta_5 (V_{4 k}-mean(V_4)) + b_{j,k} + b_{1 j}\]
+\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_{4 j}) - mean(log(BS_4))) + \beta_2  (Trt_j- mean(Trt)) +  \beta_3 (log(BS_{4 j})*T_j) + \\ \beta_4 (log(Age_j)- mean(log(Age))) + \beta_5 (V_{4 k}-mean(V_4)) + b_{j,k} + b_{1 j}\]
 
-where b_1 represent the random effects related to the individual patient:
+where $b_1$ represent the random effects related to the individual patient:
 
-\[b_{1,j} \sim Norm (0, tau.b_1)\]
+\[b_{1,j} \sim Norm (0, tau.b_1) \] with $$tau.b_1 \sim Gamma(0.001, 0.001)$$ 
 
-with 
+and the its standard deviation equal to $$\sigma = \frac{1}{tau.b_1}$$
 
 whilst b represent the combined random effects related to the patient and the single visit period:
 
+\[b_{j,k} \sim Norm (0, tau.b)\] with $$tau.b \sim Gamma(0.001, 0.001)$$ 
 
 
-Prior:
+and its standard deviation equal to $$\sigma = \frac{1}{tau.b}$$
+
+
+Covariates Prior:
 \[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
 
 
 ### BUGS MODEL
-```{r negative_binomial_RE_model}
+```{r negative_binomial_RE_model,cache = TRUE }
 
 NegativeBinomialREModelString = "model{
   # likelihood
@@ -558,8 +559,9 @@ NegativeBinomialREModelString = "model{
   + b1[j] + b[j, k]
   
   b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
-  p[j,k] <- r/(r+lambda[j,k])
-  y[j, k] ~ dnegbin( p[j,k], r)
+  p[j,k] <- r[j,k]/(r[j,k]+lambda[j,k])
+  y[j, k] ~ dnegbin( p[j,k], r[j,k])
+  r[j,k] ~ dunif(0.0001,1000)
   }
   
   b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
@@ -575,7 +577,7 @@ NegativeBinomialREModelString = "model{
   log.Base4.bar <- mean(log.Base4[])
   V4.bar <- mean(V4[])
   # priors:
-  r ~ dunif(0.0001,1000)
+  #r ~ dunif(0.0001,1000)
   a0 ~ dnorm(0.0,1.0E-4)
   beta.Base ~ dnorm(0.0,1.0E-4)
   beta.Trt ~ dnorm(0.0,1.0E-4);
@@ -583,21 +585,24 @@ NegativeBinomialREModelString = "model{
   beta.Age ~ dnorm(0.0,1.0E-4)
   beta.V4 ~ dnorm(0.0,1.0E-4)
   
-  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
-  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b <- 1.0 / sqrt(tau.b)
   
 # re-calculate intercept on original scale:
   alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
   - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
 
 }"
-writeLines(NegativeBinomialModelString, "NBREmodel.txt")
+writeLines(NegativeBinomialREModelString, "NBREmodel.txt")
 ```
 
 ### JAGS MODEL
-```{r jagsModelNegBinomialRE}
-  
-parametersNBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1")
+```{r jagsModelNegBinomialRE,cache = TRUE }
+
+
+parametersNBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1", "tau.b", "tau.b1")
 
 negBinomialREJags= jags(model.file = "NBREmodel.txt", 
                       parameters.to.save =  parametersNBre, 
@@ -605,7 +610,7 @@ negBinomialREJags= jags(model.file = "NBREmodel.txt",
                       n.chains= 3,
                       n.thin = 10,
                       n.burnin = 8000,
-                      n.iter = 35000)
+                      n.iter = 30000)
 
 negBinomialREJags
 
@@ -623,8 +628,13 @@ autocorr.diag(as.mcmc(negBinomialREJags))
 # i am going to add a thining factor of 10
 
 ```
+
+Also here the parameter reach the convergence, and the PSRF value (potential scale reduction factor) is really close to 1 which means that the chains converged to the target posterior distribution. The autocorrelation start to decrease at high LAG level, that's why I am going to use a thining factor (50).
+
 ### SIMULATION AND DIC COMPUTATION
-```{r negativeBinomialRESimulation}
+
+
+```{r negativeBinomialRESimulation,cache = TRUE }
 
 negBinomialRESim= coda.samples(model = negBinomialREJags$model, 
                              variable.names = parametersNBre, 
@@ -640,13 +650,48 @@ dicNegBinRE
 ```
 
 
-## 2.4 Poisson with random effects
+The negative association of the treatment is confirmed althought the effect is now attenuated with respect to the one of the model 1 (Negative Binomial), and morevor the SD is higher. The DIC value is lower in this modele than in the previus one.
+
+## 2.4 Model 3: Poisson with random effects - Poisson Log-Normal Model
+
+
+
+Model formulation:
+
+
+\[Y_{j,k} \sim Pois( \mu_{j,k}) \]
+\[log(\mu_{j,k}) = \alpha_{0} + \beta_1 log(BS_{4 j}) + \beta_2  Trt_j + \beta_3 (log(BS_{4 j})*T_j) + \beta_4 log(Age_j) + \beta_5 V_{4 k} + b_{j,k} + b_{1 j}\]
+
+that is also equivalent to 
+
+
+\[Y_{j,k} \sim Pois( \lambda_{j,k} = e^b e^{b_1}\mu_{j,k} ) \]
+
+where, as for the Negative Binomial with Random Effects, b_1 represent the random effects related to the individual patient and b the combined random effects related to the patient and the single visit period:
+
+\[b_{1,j} \sim Norm (0, tau.b_1) \] with $tau.b_1 \sim Gamma(0.001, 0.001)$ 
+
+and the its standard deviation equal to $\sigma = \frac{1}{tau.b_1}$
+
+
+\[b_{j,k} \sim Norm (0, tau.b)\] with $tau.b \sim Gamma(0.001, 0.001)$ 
+
+
+and its standard deviation equal to $\sigma = \frac{1}{tau.b}$
+
+Covariates Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+
+
+
+
+
+
 
 ### BUGS MODEL
-```{r poissonRE_bugs_model}
+```{r poissonRE_bugs_model,cache = TRUE }
 
-poissonREModelString = "model
-{
+poissonREModelString = "model{
   for(j in 1 : N) {
   for(k in 1 : T) {
   log(mu[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
@@ -665,11 +710,13 @@ poissonREModelString = "model
   }
   
   #covariate means:
+ 
   log.Age.bar <- mean(log.Age[])
   Trt.bar <- mean(Trt[])
   BT.bar <- mean(BT[])
   log.Base4.bar <- mean(log.Base4[])
   V4.bar <- mean(V4[])
+
   # priors:
   a0 ~ dnorm(0.0,1.0E-4)
   beta.Base ~ dnorm(0.0,1.0E-4)
@@ -677,8 +724,11 @@ poissonREModelString = "model
   beta.BT ~ dnorm(0.0,1.0E-4)
   beta.Age ~ dnorm(0.0,1.0E-4)
   beta.V4 ~ dnorm(0.0,1.0E-4)
-  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
-  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3) 
+  sigma.b <- 1.0/ sqrt(tau.b)
+
   # re-calculate intercept on original scale:
   alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
   - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
@@ -687,21 +737,20 @@ writeLines(poissonREModelString, "poissonREmodel.txt")
 ```
 
 ### JAGS MODEL
-```{r poissonREjags}
+```{r poissonREjags,cache = TRUE }
 
-parameterPOISre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1")
+parameterPOISre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1", "tau.b", "tau.b1")
 
-poissonREJags = jags("poissonREmodel.txt",
-                      parameters.to.save =  parametersPOISre,
-                      data = data_jags, 
-                      n.chains=2,
-                      n.thin = 10 , 
-                      n.burnin = 5000,
-                      n.iter = 25000)
+poissonREJags = jags(model.file ="poissonREmodel.txt",
+                      parameters.to.save =  parameterPOISre,
+                      data = data_jags,
+                     n.chains = 3)
+
+
 
 poissonREJags
 
-
+burn = 5000
 update(poissonREJags$model, burn)
 
 
@@ -714,24 +763,62 @@ autocorr.diag(as.mcmc(poissonREJags))
 
 
 ```
+
+The results seems really similar to the Negative Binomial with random effects, but here the data are less correlated and also the ESS is higher than the one estimated in the previous model. 
+
 ### SIMULATION AND DIC COMPUTATION
-```{r poissonRESimulation}
+```{r poissonRESimulation,cache = TRUE }
+
+iter = 30000
 
 poissonRESim= coda.samples(model = poissonREJags$model, 
-                             variable.names = parametersPOISre, 
+                             variable.names = parameterPOISre, 
                              n.iter = iter, 
-                             thin = 10)
+                             thin = 50)
 
 summary(poissonRESim)
 
-dicPoisRE = dic.samples(poissonREJags$model, n.iter = iter, thin = 10)
+dicPoisRE = dic.samples(poissonREJags$model, n.iter = iter, thin = 50)
 
 dicPoisRE
 
 ```
 
-## 2.5 Zero-Inflated Negative Binomial
-```{r zeroInflatedNegativeBinomialBUGSmodel}
+Whit less iteration and a smaller penalty deviance we obtain a model with a even smaller DIC.
+
+
+
+## 2.5 Model 4: Zero-Inflated Negative Binomial
+
+In this model we have:
+
+
+
+\[Y_{j,k} \sim NegBinom(p_{j,k},r_{j,k}) \]
+
+where p[j,k] is the probability of *"success"* of the patient in that period visit and is equal to \[r_{j,k}/(r_{j,k}+\lambda_{j,k}* (1-z_{j,k})\], r is the overdispersion parameter
+\[r_{j,k} \sim U(0.0001, 1000)\] and  \[z_{j,k} \sim Bern(\psi) \quad with \quad \psi \sim Unif (0,1)\] which represent the presence of an excessive proportion of zero with a certain probability $\psi$, usually assumed costant across all observation.
+
+
+\[log(\lambda_{j,k}) = \alpha_{0} + \beta_1 (log(BS_{4 j}) - mean(log(BS_4))) + \beta_2  (Trt_j- mean(Trt)) + \beta_3 (log(BS_{4 j})*T_j) + \beta_4 (log(Age_j)- mean(log(Age))) + \beta_5 (V_{4 k}-mean(V_4)) + b_{j,k} + b_{1 j}\]
+
+where b_1 represent the random effects related to the individual patient:
+
+\[b_{1,j} \sim Norm (0, tau.b_1) \] with $tau.b_1 \sim Gamma(0.001, 0.001)$ 
+
+and the its standard deviation equal to $\sigma = \frac{1}{tau.b_1}$
+
+whilst b represent the combined random effects related to the patient and the single visit period:
+
+\[b_{j,k} \sim Norm (0, tau.b)\] with $tau.b \sim Gamma(0.001, 0.001)$ 
+
+
+and its standard deviation equal to $\sigma = \frac{1}{tau.b}$
+
+
+Covariates Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
+```{r zeroInflatedNegativeBinomialBUGSmodel,cache = TRUE }
 
 ZINBmodelString = "model{
  # likelihood
@@ -744,13 +831,13 @@ ZINBmodelString = "model{
   + beta.BT * (BT[j] - BT.bar)
   + beta.Age * (log.Age[j] - log.Age.bar)
   + beta.V4 * (V4[k] - V4.bar) 
-  + b1[j] + b[j, k]+ z[j,k]
+  + b1[j] + b[j, k]
   
   b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
-  p[j,k] <- r/(r+lambda[j,k])
-  y[j, k] ~ dnegbin( p[j,k], r)
-  psi ~ dunif(0, 1) 
-  z[j,k] ~ dbern(psi[j,k]) 
+  p[j,k] <- r[j,k]/(r[j,k]+lambda[j,k]*(1-z[j,k]))
+  y[j, k] ~ dnegbin( p[j,k], r[j,k])
+  r[j,k] ~ dunif(0.0001,1000)
+  z[j,k] ~ dbern(psi) 
   }
   
   b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
@@ -766,33 +853,35 @@ ZINBmodelString = "model{
   log.Base4.bar <- mean(log.Base4[])
   V4.bar <- mean(V4[])
   # priors:
-  r ~ dunif(0.0001,1000)
+  
   a0 ~ dnorm(0.0,1.0E-4)
   beta.Base ~ dnorm(0.0,1.0E-4)
   beta.Trt ~ dnorm(0.0,1.0E-4);
   beta.BT ~ dnorm(0.0,1.0E-4)
   beta.Age ~ dnorm(0.0,1.0E-4)
   beta.V4 ~ dnorm(0.0,1.0E-4)
-  
+  psi ~ dunif(0, 1) 
 
-  tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
-  tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  tau.b1 ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b1 <- 1.0 / sqrt(tau.b1)
+  tau.b ~ dgamma(1.0E-3,1.0E-3)
+  sigma.b <- 1.0/ sqrt(tau.b)
   
 # re-calculate intercept on original scale:
   alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
   - beta.BT * BT.bar - beta.Age * log.Age.bar - beta.V4 * V4.bar
 
 }"
-writeLines(ZIPmodelString, "ZIPmodel.txt")
+writeLines(ZINBmodelString, "ZINBmodel.txt")
 ```
 
 ### JAGS MODEL
 
-```{r ZINBjagsmodel}
-parameterZINBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1" ,"psi")
+```{r ZINBjagsmodel,cache = TRUE }
+parameterZINBre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1" , "tau.b", "tau.b1","psi")
 
-ZINBreJags = jags("ZINBmodel.txt",
-                 parameters.to.save =  parametersZINBre,
+ZINBreJags = jags(model.file = "ZINBmodel.txt",
+                 parameters.to.save =  parameterZINBre,
                  data = data_jags, 
                  n.chains=3,
                  n.thin = 10 , 
@@ -814,15 +903,15 @@ autocorr.diag(as.mcmc(ZINBreJags))
 
 
 ```
-
+The parameters reached the convergence and the data are not so correlated as for the other Negative Binomial, and so it seems that implenting this other dispersion parameter is helping the model
 
 ### SIMULATION AND DIC COMPUTATION
 
 
-```{r ZINBreSimulation}
+```{r ZINBreSimulation,cache = TRUE }
 
 ZINBreSim= coda.samples(model = ZINBreJags$model, 
-                             variable.names = parametersZINBre, 
+                             variable.names = parameterZINBre, 
                              n.iter = iter, 
                              thin = 10)
 
@@ -834,26 +923,51 @@ dicZinbRE
 
 ```
 
+In the Zero-Inflated model the DIC score can't be computed
 
-## 2.6 Zero-Inflated Poisson
+
+
+## 2.6 Model 5: Zero-Inflated Poisson
+
+
+
+Let's define this new model:
+
+
+\[Y_{j,k} \sim Pois( \mu_{j,k}) = Pois(\lambda (1-z_{j,k})) = Pois(e^b e^{b_1}\mu_{j,k}(1-z_{j,k}) )) \]
+\[log(\mu_{j,k}) = \alpha_{0} + \beta_1 log(BS_{4 j}) + \beta_2  Trt_j + \beta_3 (log(BS_{4 j})*T_j) + \beta_4 log(Age_j) + \beta_5 V_{4 k} + b_{j,k} + b_{1 j}\]
+
+where  \[z_{j,k} \sim Bern(\psi) \quad with \quad \psi \sim Unif (0,1)\] which represent the presence or absence of an excessive proportion of zero with a certain probability $\psi$, usually assumed costant across all observation and b_1 represent the random effects related to the individual patient and b the combined random effects related to the patient and the single visit period:
+
+\[b_{1,j} \sim Norm (0, tau.b_1) \] with $tau.b_1 \sim Gamma(0.001, 0.001)$ 
+
+and the its standard deviation equal to $\sigma = \frac{1}{tau.b_1}$
+
+
+\[b_{j,k} \sim Norm (0, tau.b)\] with $tau.b \sim Gamma(0.001, 0.001)$ 
+
+
+and its standard deviation equal to $\sigma = \frac{1}{tau.b}$
+
+Covariates Prior:
+\[B_i \sim Norm(0, 0.001) \quad \quad \forall \quad i = 1,...,5 \] 
 
 ### BUGS MODEL
-```{r zeroInflatedBUGSmodel}
+```{r zeroInflatedBUGSmodel,cache = TRUE }
 
 ZIPmodelString = "model{
  for(j in 1 : N) {
  for(k in 1 : T) {
- mu[j,k] <- lambda[j,k]
+ mu[j,k] <- lambda[j,k] *(1- z[j, k])+ z[j, k] *0.00001
   log(lambda[j, k]) <- a0 + beta.Base * (log.Base4[j] - log.Base4.bar)
   + beta.Trt * (Trt[j] - Trt.bar)
   + beta.BT * (BT[j] - BT.bar)
   + beta.Age * (log.Age[j] - log.Age.bar)
   + beta.V4 * (V4[k] - V4.bar)
-  + b1[j] + b[j, k]+ z[j, k]
+  + b1[j] + b[j, k]
   y[j, k] ~ dpois(mu[j, k])
   b[j, k] ~ dnorm(0.0, tau.b); # subject*visit random effects
-  psi ~ dunif(0, 1) 
-  z[j,k] ~ dbern(psi[j,k]) 
+  z[j,k] ~ dbern(psi) 
   }
   b1[j] ~ dnorm(0.0, tau.b1) # subject random effects
   BT[j] <- Trt[j] * log.Base4[j] # interaction
@@ -876,6 +990,7 @@ ZIPmodelString = "model{
   beta.V4 ~ dnorm(0.0,1.0E-2)
   tau.b1 ~ dgamma(1.0E-3,1.0E-3); sigma.b1 <- 1.0 / sqrt(tau.b1)
   tau.b ~ dgamma(1.0E-3,1.0E-3); sigma.b <- 1.0/ sqrt(tau.b)
+  psi ~ dunif(0, 1)   
 
   # re-calculate intercept on original scale:
   alpha0 <- a0 - beta.Base * log.Base4.bar - beta.Trt * Trt.bar
@@ -886,11 +1001,14 @@ writeLines(ZIPmodelString, "ZIPmodel.txt")
 
 ### JAGS MODEL
 
-```{r ZIPjagsmodel}
-parameterZIPre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1","psi")
+```{r ZIPjagsmodel,cache = TRUE }
 
-ZIPreJags = jags("ZIPmodel.txt",
-                 parameters.to.save =  parametersZIPre,
+library(R2jags)
+library(rjags)
+parameterZIPre = c("beta.Age", "beta.BT","beta.Base","beta.Trt","beta.V4","a0", "sigma.b", "sigma.b1", "tau.b", "tau.b1", "psi")
+
+ZIPreJags = jags(model.file = "ZIPmodel.txt",
+                 parameters.to.save =  parameterZIPre,
                  data = data_jags, 
                  n.chains=3,
                  n.thin = 10 , 
@@ -917,11 +1035,11 @@ autocorr.diag(as.mcmc(ZIPreJags))
 ### SIMULATION AND DIC COMPUTATION
 
 
-```{r ZIPreSimulation}
-
+```{r ZIPreSimulation, cache = TRUE }
+library(coda)
 ZIPreSim= coda.samples(model = ZIPreJags$model, 
-                             variable.names = parametersZIPre, 
-                             n.iter = iter, 
+                             variable.names = parameterZIPre, 
+                             n.iter = 25000, 
                              thin = 10)
 
 summary(ZIPreSim)
@@ -936,7 +1054,8 @@ dicZipRE
 
 ## 3. MCMC Diagnostic
 
-```{r NBmcmcdiag, warning=FALSE, message=FALSE}
+### 3.1 Negative Binomial
+```{r NBmcmcdiag, warning=FALSE, message=FALSE,cache = TRUE }
 library(mcmcplots)
 mcmcplot1(negBinomialSim[,"beta.Age",drop=FALSE])
 mcmcplot1(negBinomialSim[,"beta.BT",drop=FALSE])
@@ -948,8 +1067,9 @@ mcmcplot1(negBinomialSim[,"a0",drop=FALSE])
 
 ```
 
+### 3.2 Negative Binomial RE
 
-```{r NBREmcmcdiag}
+```{r NBREmcmcdiag,cache = TRUE }
 
 mcmcplot1(negBinomialRESim[,"beta.Age",drop=FALSE])
 mcmcplot1(negBinomialRESim[,"beta.BT",drop=FALSE])
@@ -961,7 +1081,9 @@ mcmcplot1(negBinomialRESim[,"sigma.b",drop=FALSE])
 mcmcplot1(negBinomialRESim[,"sigma.b1",drop=FALSE])
 ```
 
-```{r poisREmcmcdiag}
+
+### 3.3 Poisson Log-Normal
+```{r poisREmcmcdiag,cache = TRUE }
 
 mcmcplot1(poissonRESim[,"beta.Age",drop=FALSE])
 mcmcplot1(poissonRESim[,"beta.BT",drop=FALSE])
@@ -973,7 +1095,9 @@ mcmcplot1(poissonRESim[,"sigma.b",drop=FALSE])
 mcmcplot1(poissonRESim[,"sigma.b1",drop=FALSE])
 ```
 
-```{r ZinbREmcmcdiag}
+### 3.4 Zero Inflated Negative Binomial
+
+```{r ZinbREmcmcdiag,cache = TRUE }
 
 mcmcplot1(ZINBreSim[,"beta.Age",drop=FALSE])
 mcmcplot1(ZINBreSim[,"beta.BT",drop=FALSE])
@@ -986,7 +1110,10 @@ mcmcplot1(ZINBreSim[,"sigma.b1",drop=FALSE])
 mcmcplot1(ZINBreSim[,"psi",drop=FALSE])
 ```
 
-```{r ZipREmcmcdiag}
+
+### Zero-Inflated Poisson
+
+```{r ZipREmcmcdiag,cache = TRUE }
 
 mcmcplot1(ZIPreSim[,"beta.Age",drop=FALSE])
 mcmcplot1(ZIPreSim[,"beta.BT",drop=FALSE])
@@ -999,22 +1126,9 @@ mcmcplot1(ZIPreSim[,"sigma.b1",drop=FALSE])
 mcmcplot1(ZIPreSim[,"psi",drop=FALSE])
 ```
 
-## 4. Model Comparison
 
 
 
-3.3 Bur
 
+The MCMC sampling chain was adequately mixed and the retained samples independent. The chains appear well mixed and stable the samples are now less auto-correlated and the chains are also arguably mixed a little better.
 
-
-the MCMC sampling chain was adequately mixed and the retained samples independent.
-The chains appear well mixed and stable
- the samples are now less auto-correlated and the chains are also arguably mixed a little better.
-
-
-
-A combination of normal and independent Gamma random effects. This
-is the most commonly used form of the combined model in which the
-normal random effects induce/account for correlation while the Gamma
-random effects induce/account for overdispersion. It is model (3.16) but
-with Σi diagonal.
